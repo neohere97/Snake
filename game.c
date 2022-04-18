@@ -4,6 +4,7 @@
 #include <stdio.h>
 #include "regdef.h"
 #include "display.h"
+#include "joystick.h"
 
 void game_compute_render();
 // void game_render();
@@ -20,26 +21,38 @@ uint8_t total_pixels = 0;
 void init_game()
 {
     long m;
-    int i, j;
+    long i, j;
+    uint8_t pos,xpos,ypos;
 
     clear_display();
     create_new_pixel(0x11);
     game_compute_render();
     while (1)
     {
-        // clear_display();
-        
-        for (i = 1; i < 9; i++)
-        {
-            for (j = 1; j < 9; j++)
-            {
-                clear_display();
-                pixels_buffer[0].pos_xy = (i << 4) | j;
-                game_compute_render();
-                for (m = 0; m < 100000; m++)
-                    ; // Sleep
-            }
+
+        for (i = 0; i < 60000; i++){};
+
+        pos = get_joystick_pos();
+        xpos = (pixels_buffer[0].pos_xy & 0xF0 )>> 4;
+        ypos = pixels_buffer[0].pos_xy & 0xF;
+        if(pos == UP && xpos > 1){
+            pixels_buffer[0].pos_xy = ((xpos - 1) << 4) | ypos; 
+            game_compute_render();           
         }
+        if(pos == DOWN && xpos < 8){
+            pixels_buffer[0].pos_xy = ((xpos + 1) << 4) | ypos; 
+            game_compute_render();
+        }
+        if(pos == LEFT && ypos > 1){
+            pixels_buffer[0].pos_xy = ((xpos) << 4) | (ypos - 1); 
+            game_compute_render();
+        }
+        if(pos == RIGHT && ypos < 8){
+            pixels_buffer[0].pos_xy = ((xpos) << 4) | (ypos + 1); 
+            game_compute_render();
+        }
+        
+        
     }
 
     //Making the head pixel

@@ -68,13 +68,13 @@ uint16_t get_adcval(uint8_t channel_no)
      xpos = get_adcval(JOYSTICK_XDIR);
      ypos = get_adcval(JOYSTICK_YDIR);
 
-     if(ypos > 700 && xpos > 400 && xpos < 600)
+     if(ypos > 600 && xpos > 400 && xpos < 600)
      return UP;
-     else if(xpos > 700 && ypos > 400 && ypos < 600)
+     else if(xpos > 600 && ypos > 400 && ypos < 600)
      return RIGHT;
-     else if(ypos < 200 && xpos > 400 && xpos < 600)
+     else if(ypos < 300 && xpos > 400 && xpos < 600)
      return DOWN;
-     else if(xpos < 200 && ypos > 400 && ypos < 600)
+     else if(xpos < 300 && ypos > 400 && ypos < 600)
      return LEFT;
      else
      return IDLE;
