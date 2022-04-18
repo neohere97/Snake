@@ -2,9 +2,14 @@
 #include <stdio.h>
 #include "regdef.h"
 #include "joystick.h"
+#include "spi.h"
+#include "display.h"
+#include "game.h"
 
 void init_uart();
 void init_interrupt();
+
+
 // void pca_interrupt() __interrupt(3);
 
 #define UART_CR2_TEN (1 << 3)
@@ -40,18 +45,16 @@ void init_uart()
  ***********************************************************************************/
 void init_interrupt()
 {
-    PA_DDR = 0x0;
-    PA_CR1 = 0x8;
-    PA_CR2 = 0x8;
-    EXTI_CR1 |= 0x2;
+    PC_DDR = 0x0;
+    PC_CR1 = 0x8;
+    PC_CR2 = 0x8;
+    EXTI_CR1 |= 0x20;
 }
 
-void pca_interrupt(void) __interrupt(3)
+void pca_interrupt(void) __interrupt(5)
 {
-    //A3    
-    printf("In Interrupt3 \n\r");
+  spi_write_16(0x0F02);
 }
-
 // ------------------------------------------------putchar-------------------------------------------------
 /***********************************************************************************
  * function : Shows the eeprom menu and waits for user input
@@ -90,11 +93,27 @@ void main(void)
     start_adc();
     start_adc();
     init_interrupt();
+    init_spi();
+  
+
+    uint8_t col1 = 1;
+    uint8_t cur_state = 0;
+
+    init_display();   
+    init_game();
+    // spi_write_16(0x8001);
     for (;;)
     {
-        printf("%s\n", a[get_joystick_pos()]);
-        putchar('\r');
-        for (i = 0; i < 147456; i++)
+        // if(get_joystick_pos() == UP && col1 != 0x1){
+        //     spi_write_16((uint16_t) ((col1 >> 1) << 8)| 0x1);
+        //     col1 = col1 >> 1;
+        // }else if(get_joystick_pos() == DOWN && col1 != 0x80){
+        //     spi_write_16((uint16_t) ((col1 << 1) << 8)| 0x1);
+        //     col1 = col1 << 1;
+        // }   
+        // printf("%s\n", a[get_joystick_pos()]);
+        // putchar('\r');
+        for (i = 0; i < 70000; i++)
             ; // Sleep
     }
 }
