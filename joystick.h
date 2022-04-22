@@ -4,7 +4,7 @@
 #define JOYSTICK_YDIR 0x3 // Channel 3, pin D2
 #define JOYSTICK_XDIR 0x4 // Channel 4, pin D3    
 
-enum joystick_pos {IDLE,UP,RIGHT,DOWN,LEFT};
+enum joystick_pos {IDLE,UP,RIGHT,DOWN,LEFT,UP_FAST,DOWN_FAST,RIGHT_FAST,LEFT_FAST};
 
 void init_adc1();
 void start_adc();
