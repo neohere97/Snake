@@ -12,6 +12,8 @@ void game_compute() __critical;
 void game_render();
 void create_new_pixel(uint8_t pos_xy, uint8_t fruit_eaten, uint8_t speed);
 void generate_fruit();
+void game_over();
+void check_body_crash(uint8_t next_pos);
 
 const char *a[5];
 struct pixel_struct
@@ -22,6 +24,7 @@ struct pixel_struct
 };
 
 struct pixel_struct pixels_buffer[64];
+
 volatile uint8_t total_pixels = 0;
 volatile uint8_t current_snake_dir = UP;
 
@@ -39,14 +42,15 @@ void init_game()
     a[3] = "DOWN";
     a[4] = "LEFT";
 
-    clear_display();    
+    clear_display();
+    total_pixels = 0;
     create_new_pixel(0x61, 0, 0);
     generate_fruit();
     game_render();
     while (1)
     {
 
-        for (i = 0; i < 300000; i++)
+        for (i = 0; i < 400000; i++)
         {
         };
 
@@ -59,7 +63,7 @@ void init_game()
             pixels_buffer[0].next_speedvector = UP;
             current_snake_dir = UP;
         }
-        else if (pos == DOWN && current_snake_dir != UP )
+        else if (pos == DOWN && current_snake_dir != UP)
         {
 
             pixels_buffer[0].next_speedvector = DOWN;
@@ -109,6 +113,8 @@ void game_compute() __critical
             else
                 next_pos = ((8) << 4) | ypos;
 
+            check_body_crash(next_pos);
+
             if (next_pos == pixels_buffer[63].pos_xy && i == 0)
             {
                 create_new_pixel(next_pos, 1, UP);
@@ -128,6 +134,8 @@ void game_compute() __critical
                 next_pos = ((xpos + 1) << 4) | ypos;
             else
                 next_pos = ((1) << 4) | ypos;
+            
+            check_body_crash(next_pos);
 
             if (next_pos == pixels_buffer[63].pos_xy && i == 0)
             {
@@ -148,6 +156,8 @@ void game_compute() __critical
             else
                 next_pos = ((xpos) << 4) | (8);
 
+            check_body_crash(next_pos);
+
             if (next_pos == pixels_buffer[63].pos_xy && i == 0)
             {
                 create_new_pixel(next_pos, 1, LEFT);
@@ -167,6 +177,8 @@ void game_compute() __critical
                 next_pos = ((xpos) << 4) | (ypos + 1);
             else
                 next_pos = ((xpos) << 4) | (1);
+
+            check_body_crash(next_pos);
 
             if (next_pos == pixels_buffer[63].pos_xy && i == 0)
             {
@@ -189,6 +201,12 @@ void game_compute() __critical
     {
         pixels_buffer[i].next_speedvector = pixels_buffer[i - 1].current_speedvector;
     }
+}
+
+void game_over()
+{
+    clear_display();
+    init_game();
 }
 
 void generate_fruit()
@@ -215,6 +233,15 @@ void generate_fruit()
     }
 
     interrupt_flag = 0;
+}
+
+void check_body_crash(uint8_t next_pos)
+{
+    for (int j = 0; j < total_pixels; j++)
+    {
+        if (next_pos == pixels_buffer[j].pos_xy)
+            game_over();
+    }
 }
 
 void game_render()
