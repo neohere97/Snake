@@ -115,8 +115,7 @@ void game_compute() __critical
                 next_pos = ((xpos - 1) << 4) | ypos;
             else
                 next_pos = ((8) << 4) | ypos;
-
-            check_body_crash(next_pos);
+            
 
             if (next_pos == pixels_buffer[63].pos_xy && i == 0)
             {
@@ -136,9 +135,8 @@ void game_compute() __critical
             if (xpos < 8)
                 next_pos = ((xpos + 1) << 4) | ypos;
             else
-                next_pos = ((1) << 4) | ypos;
+                next_pos = ((1) << 4) | ypos;            
             
-            check_body_crash(next_pos);
 
             if (next_pos == pixels_buffer[63].pos_xy && i == 0)
             {
@@ -158,8 +156,7 @@ void game_compute() __critical
                 next_pos = ((xpos) << 4) | (ypos - 1);
             else
                 next_pos = ((xpos) << 4) | (8);
-
-            check_body_crash(next_pos);
+            
 
             if (next_pos == pixels_buffer[63].pos_xy && i == 0)
             {
@@ -180,8 +177,7 @@ void game_compute() __critical
                 next_pos = ((xpos) << 4) | (ypos + 1);
             else
                 next_pos = ((xpos) << 4) | (1);
-
-            check_body_crash(next_pos);
+            
 
             if (next_pos == pixels_buffer[63].pos_xy && i == 0)
             {
@@ -199,6 +195,7 @@ void game_compute() __critical
             pixels_buffer[i].current_speedvector = pixel_speed;
         }
     }
+    check_body_crash(pixels_buffer[0].pos_xy);
 
     for (i = 1; i < total_pixels; i++)
     {
@@ -240,7 +237,7 @@ void generate_fruit()
 
 void check_body_crash(uint8_t next_pos)
 {
-    for (int j = 0; j < total_pixels; j++)
+    for (int j = 1; j < total_pixels; j++)
     {
         if (next_pos == pixels_buffer[j].pos_xy)
             game_over();
