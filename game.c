@@ -43,7 +43,10 @@ void init_game()
     a[4] = "LEFT";
 
     clear_display();
+    
     total_pixels = 0;
+    current_snake_dir = UP;
+
     create_new_pixel(0x61, 0, 0);
     generate_fruit();
     game_render();
