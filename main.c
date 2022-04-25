@@ -4,11 +4,11 @@
 #include "joystick.h"
 #include "spi.h"
 #include "display.h"
+#include "beeper_motor.h"
 #include "game.h"
 
 void init_uart();
 void init_interrupt();
-
 
 // void pca_interrupt() __interrupt(3);
 
@@ -81,35 +81,16 @@ void main(void)
 
     __asm__("rim");
 
-
     init_uart();
-    init_adc1();
-    unsigned long i = 0;
+    init_adc1();   
     start_adc();
     start_adc();
     init_interrupt();
     init_spi();
-  
-
-    uint8_t col1 = 1;
-    uint8_t cur_state = 0;
-
-    init_display();   
+    init_beeper();
+    init_vibmotor();  
+    init_display();
     init_game();
-    // spi_write_16(0x8001);
-    for (;;)
-    {
-        // if(get_joystick_pos() == UP && col1 != 0x1){
-        //     spi_write_16((uint16_t) ((col1 >> 1) << 8)| 0x1);
-        //     col1 = col1 >> 1;
-        // }else if(get_joystick_pos() == DOWN && col1 != 0x80){
-        //     spi_write_16((uint16_t) ((col1 << 1) << 8)| 0x1);
-        //     col1 = col1 << 1;
-        // }   
-        // printf("%s\n", a[get_joystick_pos()]);
-        // putchar('\r');
-        for (i = 0; i < 70000; i++)
-            ; // Sleep
-    }
+
 }
 // ------------------------------------------------End-------------------------------------------------
