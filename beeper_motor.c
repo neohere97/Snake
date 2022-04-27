@@ -1,29 +1,85 @@
+/***************************************************************************
+ * ESD Final Project, Spring 2022
+ * Tools: VSCode,make,stm8flash,SDCC
+ * Author: Chinmay Shalawadi
+ * Institution: University of Colorado Boulder
+ * Mail id: chsh1552@colorado.edu
+ * References: SDCC Documentation, STM8 datasheet & Reference Manuals
+ ***************************************************************************/
+
 #include "regdef.h"
 #include "beeper_motor.h"
 #include <stdint.h>
 
-void init_beeper(){
-    BEEP_CSR = 0x4A;
+// Register Defines
+#define BEEPER_INIT   (0x4A)
+#define ENABLE_BEEPER (0x20)
+#define GPIO4_MASK    (0x10)
+
+// ------------------------------------------------init-beeper-------------------------------------------------
+/***********************************************************************************
+ * function : Initializes the beeper peripheral with default frequency
+ * parameters : none
+ * return : none
+ ***********************************************************************************/
+void init_beeper()
+{
+    BEEP_CSR = BEEPER_INIT;
 }
 
-void enable_beeper(){
-    BEEP_CSR |= 0x20;
+// ------------------------------------------------enable-beeper------------------------------------------------
+/***********************************************************************************
+ * function : Turns on the beeper by setting the enable bit
+ * parameters : none
+ * return : none
+ ***********************************************************************************/
+void enable_beeper()
+{
+    BEEP_CSR |= ENABLE_BEEPER;
 }
 
-void disable_beeper(){
-    BEEP_CSR = 0x4A; 
+// ------------------------------------------------diable-beeper------------------------------------------------
+/***********************************************************************************
+ * function : Turns off the beeper by resetting to initial state
+ * parameters : none
+ * return : none
+ ***********************************************************************************/
+void disable_beeper()
+{
+    BEEP_CSR = BEEPER_INIT;
 }
 
-void init_vibmotor(){
-    PC_DDR |= 0x10;    
-    PC_CR1 |= 0x10;
-  }
-
-void enable_motor(){
-    
-    PC_ODR |= 0x10;
+// ------------------------------------------------init-vibmotor-------------------------------------------------
+/***********************************************************************************
+ * function : Initializes the GPIO for the vibration motor
+ * parameters : none
+ * return : none
+ ***********************************************************************************/
+void init_vibmotor()
+{
+    PC_DDR |= GPIO4_MASK; // Data Direction Out
+    PC_CR1 |= GPIO4_MASK; // Push Pull configuration
 }
 
-void disable_motor(){
-    PC_ODR &= 0xEF;
+// ------------------------------------------------enable-motor------------------------------------------------
+/***********************************************************************************
+ * function : Sets the motor GPIO to high and turns on the motor
+ * parameters : none
+ * return : none
+ ***********************************************************************************/
+void enable_motor()
+{
+    PC_ODR |= GPIO4_MASK;
 }
+
+// ------------------------------------------------disable-motor------------------------------------------------
+/***********************************************************************************
+ * function : Sets the GPIO to low and turns off the motor
+ * parameters : none
+ * return : none
+ ***********************************************************************************/
+void disable_motor()
+{
+    PC_ODR &= ~GPIO4_MASK;
+}
+// ------------------------------------------------End-------------------------------------------------
