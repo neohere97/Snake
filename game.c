@@ -21,6 +21,7 @@
 #include "systick.h"
 
 #define NUM_PIXELS (64)
+#define FRUIT_BUFFER_INDEX (63)
 
 // local function declarations
 static void game_compute() __critical;
@@ -35,8 +36,8 @@ static void check_body_crash(uint8_t next_pos);
 struct pixel_struct
 {
     uint8_t pos_xy;              // Stores X,Y position of the pixel on the display grid
-    uint8_t current_speedvector; // Current direction of the pixel
-    uint8_t next_speedvector;    // Next direction of the pixel
+    uint8_t current_direction; // Current direction of the pixel
+    uint8_t next_direction;    // Next direction of the pixel
 };
 
 // Buffer to hold array of 64 pixels, max size of display
@@ -96,7 +97,7 @@ void update_frame()
         else
         {
             //Update next snake head direction to be UP
-            pixels_buffer[0].next_speedvector = UP;
+            pixels_buffer[0].next_direction = UP;
             current_snake_dir = UP;
         }
     }
@@ -110,7 +111,7 @@ void update_frame()
         else
         {
             //Update next snake head direction to be DOWN
-            pixels_buffer[0].next_speedvector = DOWN;
+            pixels_buffer[0].next_direction = DOWN;
             current_snake_dir = DOWN;
         }
     }
@@ -124,7 +125,7 @@ void update_frame()
         else
         {
             //Update next snake head direction to be LEFT
-            pixels_buffer[0].next_speedvector = LEFT;
+            pixels_buffer[0].next_direction = LEFT;
             current_snake_dir = LEFT;
         }
     }
@@ -139,13 +140,13 @@ void update_frame()
         else
         {
             //Update next snake head direction to be RIGHT
-            pixels_buffer[0].next_speedvector = RIGHT;
+            pixels_buffer[0].next_direction = RIGHT;
             current_snake_dir = RIGHT;
         }
     }
     else
     {
-        pixels_buffer[0].next_speedvector = pixels_buffer[0].current_speedvector;
+        pixels_buffer[0].next_direction = pixels_buffer[0].current_direction;
     }
 
     //Compute the new position of the pixels in the pixel buffer
@@ -154,9 +155,9 @@ void update_frame()
     game_render();
 }
 
-// ------------------------------------------------putchar-------------------------------------------------
+// ------------------------------------------------game_compute-------------------------------------------------
 /***********************************************************************************
- * function : Shows the eeprom menu and waits for user input
+ * function : computes the pixel data for the next frame and updates the pixels buffer
  * parameters : none
  * return : none
  ***********************************************************************************/
@@ -167,28 +168,37 @@ void game_compute() __critical
 
     for (i = 0; i < total_pixels; i++)
     {
-        pixel_direction = pixels_buffer[i].next_speedvector;
+        //get the next direction of the pixel
+        pixel_direction = pixels_buffer[i].next_direction;
+        
+        //extract current XY coordinates of the pixel
         xpos = (pixels_buffer[i].pos_xy & 0xF0) >> 4;
         ypos = pixels_buffer[i].pos_xy & 0xF;
 
         if (pixel_direction == UP)
         {
 
+            //Check if the pixel is at the edge
+            //If at the edge make it move through the wall
             if (xpos > 1)
                 next_pos = ((xpos - 1) << 4) | ypos;
             else
                 next_pos = ((8) << 4) | ypos;
 
+            //Check if snake head next position is same as the fruit
             if (next_pos == pixels_buffer[63].pos_xy && i == 0)
             {
+                //Add the new pixel to snake body
                 create_new_pixel(next_pos, 1, UP);
+                //Generate new fruit
                 generate_fruit();
                 break;
             }
             else
             {
+                //If snake has not eaten the fruit, update the pixel to it's next position
                 pixels_buffer[i].pos_xy = next_pos;
-                pixels_buffer[i].current_speedvector = pixel_direction;
+                pixels_buffer[i].current_direction = pixel_direction;
             }
         }
         if (pixel_direction == DOWN)
@@ -208,7 +218,7 @@ void game_compute() __critical
             else
             {
                 pixels_buffer[i].pos_xy = next_pos;
-                pixels_buffer[i].current_speedvector = pixel_direction;
+                pixels_buffer[i].current_direction = pixel_direction;
             }
         }
         if (pixel_direction == LEFT)
@@ -227,7 +237,7 @@ void game_compute() __critical
             else
             {
                 pixels_buffer[i].pos_xy = next_pos;
-                pixels_buffer[i].current_speedvector = pixel_direction;
+                pixels_buffer[i].current_direction = pixel_direction;
             }
         }
         if (pixel_direction == RIGHT)
@@ -246,19 +256,19 @@ void game_compute() __critical
             else
             {
                 pixels_buffer[i].pos_xy = next_pos;
-                pixels_buffer[i].current_speedvector = pixel_direction;
+                pixels_buffer[i].current_direction = pixel_direction;
             }
         }
         if (pixel_direction == IDLE)
         {
-            pixels_buffer[i].current_speedvector = pixel_direction;
+            pixels_buffer[i].current_direction = pixel_direction;
         }
     }
     check_body_crash(pixels_buffer[0].pos_xy);
 
     for (i = 1; i < total_pixels; i++)
     {
-        pixels_buffer[i].next_speedvector = pixels_buffer[i - 1].current_speedvector;
+        pixels_buffer[i].next_direction = pixels_buffer[i - 1].current_direction;
     }
 }
 
@@ -319,8 +329,8 @@ repeat:
     }
 
     pixels_buffer[63].pos_xy = random_posxy;
-    pixels_buffer[63].current_speedvector = IDLE;
-    pixels_buffer[63].next_speedvector = IDLE;
+    pixels_buffer[63].current_direction = IDLE;
+    pixels_buffer[63].next_direction = IDLE;
 
     interrupt_flag = 0;
 }
@@ -384,15 +394,15 @@ void create_new_pixel(uint8_t pos_xy, uint8_t fruit_eaten, uint8_t speed) __crit
 
     if (total_pixels == 0 && !fruit_eaten)
     {
-        temp.current_speedvector = UP;
-        temp.next_speedvector = UP;
+        temp.current_direction = UP;
+        temp.next_direction = UP;
         pixels_buffer[total_pixels] = temp;
     }
 
     if (total_pixels > 0 && !fruit_eaten)
     {
-        temp.current_speedvector = UP;
-        temp.next_speedvector = pixels_buffer[total_pixels - 1].current_speedvector;
+        temp.current_direction = UP;
+        temp.next_direction = pixels_buffer[total_pixels - 1].current_direction;
         pixels_buffer[total_pixels] = temp;
     }
 
@@ -407,8 +417,8 @@ void create_new_pixel(uint8_t pos_xy, uint8_t fruit_eaten, uint8_t speed) __crit
         {
             pixels_buffer[i] = pixels_buffer[i - 1];
         }
-        temp.current_speedvector = speed;
-        temp.next_speedvector = speed;
+        temp.current_direction = speed;
+        temp.next_direction = speed;
         pixels_buffer[0] = temp;
         generate_fruit();
         game_render();
