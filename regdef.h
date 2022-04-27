@@ -96,6 +96,18 @@
 #define TIM1_DTR 	(*(volatile uint8_t *)0x526E)
 #define TIM1_OISR 	(*(volatile uint8_t *)0x526F)
 
+
+#define TIM2_PSCR 	(*(volatile uint8_t *)0x530E)
+#define TIM2_ARRH 	(*(volatile uint8_t *)0x530F)
+#define TIM2_ARRL 	(*(volatile uint8_t *)0x5310)
+#define TIM2_IER 	(*(volatile uint8_t *)0x5303)
+#define TIM2_SR1 	(*(volatile uint8_t *)0x5304)
+#define TIM2_CR1   	(*(volatile uint8_t *)0x5300)
+#define TIM2_EGR 	(*(volatile uint8_t *)0x5306)
+#define TIM2_CNTRH 	(*(volatile uint8_t *)0x530C)
+#define TIM2_CNTRL 	(*(volatile uint8_t *)0x530D)
+
+
 #define BEEP_CSR 	(*(volatile uint8_t *)0x50F3)
 
 

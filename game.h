@@ -2,5 +2,5 @@
 #define GAME_H_
 
 void init_game();
-
+void update_frame();
 #endif

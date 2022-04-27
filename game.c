@@ -7,6 +7,7 @@
 #include "display.h"
 #include "joystick.h"
 #include "beeper_motor.h"
+#include "systick.h"
 #include <time.h>
 
 void game_compute() __critical;
@@ -14,6 +15,8 @@ void game_render();
 void create_new_pixel(uint8_t pos_xy, uint8_t fruit_eaten, uint8_t speed);
 void generate_fruit();
 void game_over();
+void init_event_timer();
+void event_handler(uint8_t buzzer, uint8_t vibmotor, long loop_iter);
 void error_vibration();
 void check_body_crash(uint8_t next_pos);
 
@@ -40,95 +43,79 @@ extern uint8_t interrupt_flag;
  ***********************************************************************************/
 void init_game()
 {
-    long m;
-    long i, j;
-    uint8_t pos, xpos, ypos;
-
-    a[0] = "IDLE";
-    a[1] = "UP";
-    a[2] = "RIGHT";
-    a[3] = "DOWN";
-    a[4] = "LEFT";
-
     clear_display();
-
     total_pixels = 0;
     current_snake_dir = UP;
-
     create_new_pixel(0x61, 0, 0);
     generate_fruit();
     game_render();
-    while (1)
+}
+
+void update_frame()
+{
+    uint8_t pos, xpos, ypos;
+
+    pos = get_joystick_pos();
+    xpos = (pixels_buffer[0].pos_xy & 0xF0) >> 4;
+    ypos = pixels_buffer[0].pos_xy & 0xF;
+
+    if (pos == UP)
     {
-
-        for (i = 0; i < 400000; i++)
+        if (current_snake_dir == DOWN)
         {
-        };
-
-        pos = get_joystick_pos();
-        xpos = (pixels_buffer[0].pos_xy & 0xF0) >> 4;
-        ypos = pixels_buffer[0].pos_xy & 0xF;
-
-        if (pos == UP)
-        {
-            if (current_snake_dir == DOWN)
-            {
-                error_vibration();
-            }
-            else
-            {
-
-                pixels_buffer[0].next_speedvector = UP;
-                current_snake_dir = UP;
-            }
-        }
-        else if (pos == DOWN)
-        {
-            if (current_snake_dir == UP)
-            {
-                error_vibration();
-            }
-            else
-            {
-                pixels_buffer[0].next_speedvector = DOWN;
-                current_snake_dir = DOWN;
-            }
-        }
-        else if (pos == LEFT)
-        {
-            if (current_snake_dir == RIGHT)
-            {
-                error_vibration();
-            }
-            else
-            {
-                pixels_buffer[0].next_speedvector = LEFT;
-                current_snake_dir = LEFT;
-            }
-        }
-        else if (pos == RIGHT)
-        {
-            if (current_snake_dir == LEFT)
-            {
-                error_vibration();
-            }
-            else
-            {
-                pixels_buffer[0].next_speedvector = RIGHT;
-                current_snake_dir = RIGHT;
-            }
+            error_vibration();
         }
         else
         {
-            pixels_buffer[0].next_speedvector = pixels_buffer[0].current_speedvector;
-        }
-        game_compute();
-        game_render();
-        if (interrupt_flag)
-            generate_fruit();
-    }
 
-    //Making the head pixel
+            pixels_buffer[0].next_speedvector = UP;
+            current_snake_dir = UP;
+        }
+    }
+    else if (pos == DOWN)
+    {
+        if (current_snake_dir == UP)
+        {
+            error_vibration();
+        }
+        else
+        {
+            pixels_buffer[0].next_speedvector = DOWN;
+            current_snake_dir = DOWN;
+        }
+    }
+    else if (pos == LEFT)
+    {
+        if (current_snake_dir == RIGHT)
+        {
+            error_vibration();
+        }
+        else
+        {
+            pixels_buffer[0].next_speedvector = LEFT;
+            current_snake_dir = LEFT;
+        }
+    }
+    else if (pos == RIGHT)
+    {
+        if (current_snake_dir == LEFT)
+        {
+            error_vibration();
+        }
+        else
+        {
+            pixels_buffer[0].next_speedvector = RIGHT;
+            current_snake_dir = RIGHT;
+        }
+    }
+    else
+    {
+        pixels_buffer[0].next_speedvector = pixels_buffer[0].current_speedvector;
+    }
+    game_compute();
+    game_render();
+    if (interrupt_flag)
+        generate_fruit();
 }
 
 // ------------------------------------------------putchar-------------------------------------------------
@@ -291,24 +278,19 @@ void generate_fruit()
 {
 
     volatile uint8_t random_posxy;
-    volatile uint8_t random_times = (rand() % 6) + 3;
+    srand(now() + 77);
+repeat:
+    random_posxy = ((rand() % (8) + 1) << 4) | (rand() % (8) + 1);
 
-    for (uint8_t i = 0; i < random_times; i++)
+    for (int i = 0; i < total_pixels; i++)
     {
-        srand(i + 255);
-    repeat:
-        random_posxy = ((rand() % (8) + 1) << 4) | (rand() % (8) + 1);
-
-        for (int i = 0; i < total_pixels; i++)
-        {
-            if (random_posxy == pixels_buffer[i].pos_xy)
-                goto repeat;
-        }
-
-        pixels_buffer[63].pos_xy = random_posxy;
-        pixels_buffer[63].current_speedvector = IDLE;
-        pixels_buffer[63].next_speedvector = IDLE;
+        if (random_posxy == pixels_buffer[i].pos_xy)
+            goto repeat;
     }
+
+    pixels_buffer[63].pos_xy = random_posxy;
+    pixels_buffer[63].current_speedvector = IDLE;
+    pixels_buffer[63].next_speedvector = IDLE;
 
     interrupt_flag = 0;
 }
@@ -404,4 +386,5 @@ void create_new_pixel(uint8_t pos_xy, uint8_t fruit_eaten, uint8_t speed) __crit
     }
     total_pixels++;
 }
+
 // ------------------------------------------------End-------------------------------------------------

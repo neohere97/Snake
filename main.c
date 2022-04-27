@@ -4,46 +4,33 @@
 #include "joystick.h"
 #include "spi.h"
 #include "display.h"
+#include "systick.h"
 #include "beeper_motor.h"
 #include "game.h"
+#include "uart.h"
 
-void init_uart();
-void init_interrupt();
+
+#define FRAMES_PER_SECOND 5
+
+
+void init_button_interrupt();
 
 // void pca_interrupt() __interrupt(3);
 
-#define UART_CR2_TEN (1 << 3)
-#define UART_CR3_STOP2 (1 << 5)
-#define UART_CR3_STOP1 (1 << 4)
-#define UART_SR_TXE (1 << 7)
+
 
 uint8_t interrupt_flag = 0;
 
-// ------------------------------------------------init-uart------------------------------------------------
-/***********************************************************************************
- * function : Shows the eeprom menu and waits for user input
- * parameters : none
- * return : none
- ***********************************************************************************/
-void init_uart()
-{
-    //Pin D6 Tx, D5 Rx
+extern volatile long system_time;
 
-    CLK_DIVR = 0x00;    // Set the frequency to 16 MHz
-    CLK_PCKENR1 = 0xFF; // Enable peripherals
 
-    UART1_CR2 = UART_CR2_TEN;                        // Allow TX and RX
-    UART1_CR3 &= ~(UART_CR3_STOP1 | UART_CR3_STOP2); // 1 stop bit
-    UART1_BRR2 = 0x0B;
-    UART1_BRR1 = 0x08; // 9600 baud
-}
 // ------------------------------------------------init-interrupt------------------------------------------------
 /***********************************************************************************
  * function : Shows the eeprom menu and waits for user input
  * parameters : none
  * return : none
  ***********************************************************************************/
-void init_interrupt()
+void init_button_interrupt()
 {
     PC_DDR = 0x0;
     PC_CR1 = 0x8;
@@ -51,25 +38,18 @@ void init_interrupt()
     EXTI_CR1 |= 0x20;
 }
 
-void pca_interrupt(void) __interrupt(5)
+void button_interrupt_handler (void) __interrupt(5)
 {
     interrupt_flag = 1;
 }
-// ------------------------------------------------putchar-------------------------------------------------
-/***********************************************************************************
- * function : Shows the eeprom menu and waits for user input
- * parameters : none
- * return : none
- ***********************************************************************************/
-int putchar(int c)
+
+void timer1_interrupt(void) __interrupt(11)
 {
-    while (!(UART1_SR & UART_SR_TXE))
-        ;
-
-    UART1_DR = c;
-
-    return (c);
+    TIM1_SR1 = 0;
+    system_time++;
+    update_frame();
 }
+
 // ------------------------------------------------main-------------------------------------------------
 /***********************************************************************************
  * function : Shows the eeprom menu and waits for user input
@@ -78,19 +58,23 @@ int putchar(int c)
  ***********************************************************************************/
 void main(void)
 {
-
+    //enabling interrupts
     __asm__("rim");
 
-    init_uart();
+    init_uart();    
     init_adc1();   
     start_adc();
     start_adc();
-    init_interrupt();
+    init_button_interrupt();
     init_spi();
     init_beeper();
     init_vibmotor();  
     init_display();
+    init_systick(FRAMES_PER_SECOND);
     init_game();
 
+    while(1){
+        __asm__("nop");
+    }
 }
 // ------------------------------------------------End-------------------------------------------------
