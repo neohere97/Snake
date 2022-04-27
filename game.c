@@ -1,65 +1,92 @@
-#include "spi.h"
-#include "game.h"
+
+/***************************************************************************
+ * ESD Final Project, Spring 2022
+ * Tools: VSCode,make,stm8flash,SDCC
+ * Author: Chinmay Shalawadi
+ * Institution: University of Colorado Boulder
+ * Mail id: chsh1552@colorado.edu
+ * References: SDCC Documentation, MAX7219 Datasheet
+ ***************************************************************************/
+
 #include <stdint.h>
 #include <stdio.h>
 #include <stdlib.h>
+#include <time.h>
+#include "spi.h"
+#include "game.h"
 #include "regdef.h"
 #include "display.h"
 #include "joystick.h"
 #include "beeper_motor.h"
 #include "systick.h"
-#include <time.h>
 
-void game_compute() __critical;
-void game_render();
-void create_new_pixel(uint8_t pos_xy, uint8_t fruit_eaten, uint8_t speed);
-void generate_fruit();
-void game_over();
-void game_delay(long loop_iter);
-void init_event_timer();
-void event_handler(uint8_t buzzer, uint8_t vibmotor, long loop_iter);
-void error_vibration();
-void check_body_crash(uint8_t next_pos);
+#define NUM_PIXELS (64)
 
-const char *a[5];
+// local function declarations
+static void game_compute() __critical;
+static void game_render();
+static void create_new_pixel(uint8_t pos_xy, uint8_t fruit_eaten, uint8_t speed);
+static void game_over();
+static void game_delay(long loop_iter);
+static void error_vibration();
+static void check_body_crash(uint8_t next_pos);
+
+// Pixel structure with location and velocity information
 struct pixel_struct
 {
-    uint8_t pos_xy;
-    uint8_t current_speedvector;
-    uint8_t next_speedvector;
+    uint8_t pos_xy;              // Stores X,Y position of the pixel on the display grid
+    uint8_t current_speedvector; // Current direction of the pixel
+    uint8_t next_speedvector;    // Next direction of the pixel
 };
 
-struct pixel_struct pixels_buffer[64];
+// Buffer to hold array of 64 pixels, max size of display
+struct pixel_struct pixels_buffer[NUM_PIXELS];
 
-volatile uint8_t total_pixels = 0;
-volatile uint8_t current_snake_dir = UP;
+// global variables to keep track of live pixels and snake direction
+volatile uint8_t total_pixels;
+volatile uint8_t current_snake_dird;
 
-extern uint8_t interrupt_flag;
-
-// ------------------------------------------------putchar-------------------------------------------------
+// ------------------------------------------------init-game------------------------------------------------
 /***********************************************************************************
- * function : Shows the eeprom menu and waits for user input
+ * function : clears the display and starts the game
  * parameters : none
  * return : none
  ***********************************************************************************/
 void init_game()
 {
     clear_display();
+    // setting default values for the game
     total_pixels = 0;
     current_snake_dir = UP;
+
+    // creating snake body, 1 pixel at row 6, col 1
     create_new_pixel(0x61, 0, 0);
+
+    // generating fruit for the snake at random location
     generate_fruit();
+
+    // render current pixel data
     game_render();
 }
-
+// ------------------------------------------------update-frame------------------------------------------------
+/***********************************************************************************
+ * function : update the game by generating a new frame and rendering it.
+ * parameters : none
+ * return : none
+ ***********************************************************************************/
 void update_frame()
 {
     uint8_t pos, xpos, ypos;
 
+    // Get current joystick position from the joystick driver
     pos = get_joystick_pos();
+
+    // Extract the X and Y co-ordinates of the snake head
+    // Snake head is always at the 0th position in the pixel buffer
     xpos = (pixels_buffer[0].pos_xy & 0xF0) >> 4;
     ypos = pixels_buffer[0].pos_xy & 0xF;
 
+    // Handle Joystick position UP
     if (pos == UP)
     {
         if (current_snake_dir == DOWN)
@@ -68,11 +95,12 @@ void update_frame()
         }
         else
         {
-
+            //Update next snake head direction to be UP
             pixels_buffer[0].next_speedvector = UP;
             current_snake_dir = UP;
         }
     }
+    // Handle Joystick position DOWN
     else if (pos == DOWN)
     {
         if (current_snake_dir == UP)
@@ -81,10 +109,12 @@ void update_frame()
         }
         else
         {
+            //Update next snake head direction to be DOWN
             pixels_buffer[0].next_speedvector = DOWN;
             current_snake_dir = DOWN;
         }
     }
+    // Handle Joystick position LEFT
     else if (pos == LEFT)
     {
         if (current_snake_dir == RIGHT)
@@ -93,10 +123,13 @@ void update_frame()
         }
         else
         {
+            //Update next snake head direction to be LEFT
             pixels_buffer[0].next_speedvector = LEFT;
             current_snake_dir = LEFT;
         }
     }
+
+    // Handle Joystick position RIGHT
     else if (pos == RIGHT)
     {
         if (current_snake_dir == LEFT)
@@ -105,6 +138,7 @@ void update_frame()
         }
         else
         {
+            //Update next snake head direction to be RIGHT
             pixels_buffer[0].next_speedvector = RIGHT;
             current_snake_dir = RIGHT;
         }
@@ -113,10 +147,11 @@ void update_frame()
     {
         pixels_buffer[0].next_speedvector = pixels_buffer[0].current_speedvector;
     }
+
+    //Compute the new position of the pixels in the pixel buffer
     game_compute();
+    //Render updated pixels to the display 
     game_render();
-    if (interrupt_flag)
-        generate_fruit();
 }
 
 // ------------------------------------------------putchar-------------------------------------------------
@@ -128,15 +163,15 @@ void update_frame()
 void game_compute() __critical
 {
 
-    uint8_t pixel_speed, xpos, ypos, i, next_pos;
+    uint8_t pixel_direction, xpos, ypos, i, next_pos;
 
     for (i = 0; i < total_pixels; i++)
     {
-        pixel_speed = pixels_buffer[i].next_speedvector;
+        pixel_direction = pixels_buffer[i].next_speedvector;
         xpos = (pixels_buffer[i].pos_xy & 0xF0) >> 4;
         ypos = pixels_buffer[i].pos_xy & 0xF;
 
-        if (pixel_speed == UP)
+        if (pixel_direction == UP)
         {
 
             if (xpos > 1)
@@ -153,10 +188,10 @@ void game_compute() __critical
             else
             {
                 pixels_buffer[i].pos_xy = next_pos;
-                pixels_buffer[i].current_speedvector = pixel_speed;
+                pixels_buffer[i].current_speedvector = pixel_direction;
             }
         }
-        if (pixel_speed == DOWN)
+        if (pixel_direction == DOWN)
         {
 
             if (xpos < 8)
@@ -173,10 +208,10 @@ void game_compute() __critical
             else
             {
                 pixels_buffer[i].pos_xy = next_pos;
-                pixels_buffer[i].current_speedvector = pixel_speed;
+                pixels_buffer[i].current_speedvector = pixel_direction;
             }
         }
-        if (pixel_speed == LEFT)
+        if (pixel_direction == LEFT)
         {
             if (ypos > 1)
                 next_pos = ((xpos) << 4) | (ypos - 1);
@@ -192,10 +227,10 @@ void game_compute() __critical
             else
             {
                 pixels_buffer[i].pos_xy = next_pos;
-                pixels_buffer[i].current_speedvector = pixel_speed;
+                pixels_buffer[i].current_speedvector = pixel_direction;
             }
         }
-        if (pixel_speed == RIGHT)
+        if (pixel_direction == RIGHT)
         {
 
             if (ypos < 8)
@@ -211,12 +246,12 @@ void game_compute() __critical
             else
             {
                 pixels_buffer[i].pos_xy = next_pos;
-                pixels_buffer[i].current_speedvector = pixel_speed;
+                pixels_buffer[i].current_speedvector = pixel_direction;
             }
         }
-        if (pixel_speed == IDLE)
+        if (pixel_direction == IDLE)
         {
-            pixels_buffer[i].current_speedvector = pixel_speed;
+            pixels_buffer[i].current_speedvector = pixel_direction;
         }
     }
     check_body_crash(pixels_buffer[0].pos_xy);
@@ -316,7 +351,7 @@ void game_render()
     int i;
     for (i = 0; i < total_pixels; i++)
     {
-        //conversion of pixel data to display format data
+        // conversion of pixel data to display format data
         pos = pixels_buffer[i].pos_xy;
         temp = (uint8_t)(pos & 0xF) - 1;
         temp2 = 1 << (((pos & 0xF0) >> 4) - 1);
