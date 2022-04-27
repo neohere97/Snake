@@ -15,6 +15,7 @@ void game_render();
 void create_new_pixel(uint8_t pos_xy, uint8_t fruit_eaten, uint8_t speed);
 void generate_fruit();
 void game_over();
+void game_delay(long loop_iter);
 void init_event_timer();
 void event_handler(uint8_t buzzer, uint8_t vibmotor, long loop_iter);
 void error_vibration();
@@ -239,27 +240,22 @@ void game_over()
     clear_display();
     enable_motor();
     enable_beeper();
-    for (i = 0; i < 300000; i++)
-        ;
+    game_delay(150);
     disable_motor();
     disable_beeper();
     BEEP_CSR = 0x4C;
     enable_beeper();
-    for (i = 0; i < 300000; i++)
-        ;
-
+    game_delay(150);
     enable_motor();
-    for (i = 0; i < 300000; i++)
-        ;
+    game_delay(150);
     disable_motor();
     disable_beeper();
     BEEP_CSR = 0x4E;
     enable_beeper();
-    for (i = 0; i < 300000; i++)
-        ;
+    game_delay(150);
     enable_motor();
-    for (i = 0; i < 300000; i++)
-        disable_motor();
+    game_delay(300);
+    disable_motor();
     disable_beeper();
     BEEP_CSR = 0x4A;
 
@@ -269,8 +265,7 @@ void game_over()
 void error_vibration()
 {
     enable_motor();
-    for (long i = 0; i < 200000; i++)
-        ; // Sleep
+    game_delay(120);
     disable_motor();
 }
 
@@ -370,8 +365,7 @@ void create_new_pixel(uint8_t pos_xy, uint8_t fruit_eaten, uint8_t speed) __crit
     {
         long i;
         enable_beeper();
-        for (i = 0; i < 100000; i++)
-            ; // Sleep
+        game_delay(30);
         disable_beeper();
 
         for (uint8_t i = total_pixels + 1; i > 0; i--)
@@ -387,4 +381,11 @@ void create_new_pixel(uint8_t pos_xy, uint8_t fruit_eaten, uint8_t speed) __crit
     total_pixels++;
 }
 
+void game_delay(long loop_iter)
+{
+    long i;
+
+    for (i = 0; i < loop_iter * 1000; i++)
+        ;
+}
 // ------------------------------------------------End-------------------------------------------------
