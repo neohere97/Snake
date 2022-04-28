@@ -5,7 +5,6 @@
  * Author: Chinmay Shalawadi
  * Institution: University of Colorado Boulder
  * Mail id: chsh1552@colorado.edu
- * References: SDCC Documentation, MAX7219 Datasheet
  ***************************************************************************/
 
 #include <stdint.h>
@@ -35,7 +34,7 @@ static void check_body_crash(uint8_t next_pos);
 // Pixel structure with location and velocity information
 struct pixel_struct
 {
-    uint8_t pos_xy;              // Stores X,Y position of the pixel on the display grid
+    uint8_t pos_xy;            // Stores X,Y position of the pixel on the display grid
     uint8_t current_direction; // Current direction of the pixel
     uint8_t next_direction;    // Next direction of the pixel
 };
@@ -45,7 +44,7 @@ struct pixel_struct pixels_buffer[NUM_PIXELS];
 
 // global variables to keep track of live pixels and snake direction
 volatile uint8_t total_pixels;
-volatile uint8_t current_snake_dird;
+volatile uint8_t current_snake_dir;
 
 // ------------------------------------------------init-game------------------------------------------------
 /***********************************************************************************
@@ -151,7 +150,7 @@ void update_frame()
 
     //Compute the new position of the pixels in the pixel buffer
     game_compute();
-    //Render updated pixels to the display 
+    //Render updated pixels to the display
     game_render();
 }
 
@@ -170,7 +169,7 @@ void game_compute() __critical
     {
         //get the next direction of the pixel
         pixel_direction = pixels_buffer[i].next_direction;
-        
+
         //extract current XY coordinates of the pixel
         xpos = (pixels_buffer[i].pos_xy & 0xF0) >> 4;
         ypos = pixels_buffer[i].pos_xy & 0xF;
@@ -204,7 +203,7 @@ void game_compute() __critical
         if (pixel_direction == DOWN)
         {
             // check if the snake is at the edge
-            // make it go thruogh the wall 
+            // make it go thruogh the wall
             if (xpos < 8)
                 next_pos = ((xpos + 1) << 4) | ypos;
             else
@@ -273,7 +272,7 @@ void game_compute() __critical
     //Once all the position of the pixels is calcualted, this function call checks if snake has crashed
     //into itself
     check_body_crash(pixels_buffer[0].pos_xy);
-    
+
     //Update the next direction for all the remaining pixels, since the direction changes needs to traverse down the snake body
     for (i = 1; i < total_pixels; i++)
     {
@@ -291,13 +290,13 @@ void game_compute() __critical
 void game_over()
 {
     clear_display();
-    
+
     enable_motor();
     enable_beeper();
     game_delay(150);
     disable_motor();
     disable_beeper();
-    
+
     //Change the beeper frequency
     BEEP_CSR = 0x4C;
     enable_beeper();
@@ -306,8 +305,8 @@ void game_over()
     game_delay(150);
     disable_motor();
     disable_beeper();
-    
-    //Change the bepper frequency 
+
+    //Change the bepper frequency
     BEEP_CSR = 0x4E;
     enable_beeper();
     game_delay(150);
@@ -315,10 +314,10 @@ void game_over()
     game_delay(300);
     disable_motor();
     disable_beeper();
-    
+
     //Reset the beepr to default state
     BEEP_CSR = 0x4A;
-    
+
     //start a new game
     init_game();
 }
@@ -347,11 +346,11 @@ void generate_fruit()
 
     volatile uint8_t random_posxy;
     //seeding the random generator with system time to improve randomness
-    srand(now());
+    srand(now() + 77);
 repeat:
     //Generating a random XY location between (1,1) &　（８，８）
     random_posxy = ((rand() % (8) + 1) << 4) | (rand() % (8) + 1);
-    
+
     //Check if a pixel already exists at that location and repeat the random generation if it does
     for (int i = 0; i < total_pixels; i++)
     {
@@ -362,7 +361,6 @@ repeat:
     pixels_buffer[FRUIT_BUFFER_INDEX].pos_xy = random_posxy;
     pixels_buffer[FRUIT_BUFFER_INDEX].current_direction = IDLE;
     pixels_buffer[FRUIT_BUFFER_INDEX].next_direction = IDLE;
-
 }
 // ------------------------------------------------check-body-crash-------------------------------------------------
 /***********************************************************************************
@@ -388,8 +386,8 @@ void game_render()
 {
     // Raw display buffer data without any pixels
     uint16_t cols_data[8] = {0x0001, 0x0002, 0x0003, 0x0004, 0x0005, 0x0006, 0x0007, 0x0008};
-    
-    uint8_t pos, speed_vector, temp, temp2;
+
+    uint8_t pos, temp, temp2;
     int i;
     for (i = 0; i < total_pixels; i++)
     {
@@ -405,6 +403,7 @@ void game_render()
     temp2 = 1 << (((pos & 0xF0) >> 4) - 1);
     cols_data[temp] |= temp2 << 8;
 
+    //Write the new display frame data to the display
     for (i = 0; i < 8; i++)
     {
         spi_write_16(cols_data[i]);
@@ -415,15 +414,19 @@ void game_render()
 }
 // ------------------------------------------------create_new_pixel-------------------------------------------------
 /***********************************************************************************
- * function : Shows the eeprom menu and waits for user input
- * parameters : none
+ * function : creates a new pixel on the display
+ * parameters : pos_xy      -> XY position on the display
+ *              fruit_eaten -> whether the snake has eaten a fruit or not
+ *              speed       -> pixel speed
  * return : none
  ***********************************************************************************/
 void create_new_pixel(uint8_t pos_xy, uint8_t fruit_eaten, uint8_t speed) __critical
 {
+    //Temp struct for the new pixel
     struct pixel_struct temp;
     temp.pos_xy = pos_xy;
 
+    //If it is the first pixel snake body, start with direction UP
     if (total_pixels == 0 && !fruit_eaten)
     {
         temp.current_direction = UP;
@@ -431,6 +434,8 @@ void create_new_pixel(uint8_t pos_xy, uint8_t fruit_eaten, uint8_t speed) __crit
         pixels_buffer[total_pixels] = temp;
     }
 
+    //If snake body needs to start with bigger body, subsequent pixel directions needs to be
+    // handled
     if (total_pixels > 0 && !fruit_eaten)
     {
         temp.current_direction = UP;
@@ -438,26 +443,39 @@ void create_new_pixel(uint8_t pos_xy, uint8_t fruit_eaten, uint8_t speed) __crit
         pixels_buffer[total_pixels] = temp;
     }
 
+    //If the snake has eaten the fruit
     if (fruit_eaten)
     {
-        long i;
+        //beep event
         enable_beeper();
         game_delay(30);
         disable_beeper();
 
+        //Move all the pixels in the buffer to one position right
         for (uint8_t i = total_pixels + 1; i > 0; i--)
         {
             pixels_buffer[i] = pixels_buffer[i - 1];
         }
+
+        //new pixel is attached at the head of the snake
         temp.current_direction = speed;
         temp.next_direction = speed;
         pixels_buffer[0] = temp;
+
+        //generate new fruit and render the game frame
         generate_fruit();
         game_render();
     }
+
+    // increase the total pixel count
     total_pixels++;
 }
-
+// ------------------------------------------------game_delay-------------------------------------------------
+/***********************************************************************************
+ * function : simple hard loop spin delay for the game timing adjustments
+ * parameters : loop_iter -> delay iterations  *         
+ * return : none
+ ***********************************************************************************/
 void game_delay(long loop_iter)
 {
     long i;

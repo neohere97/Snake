@@ -4,7 +4,7 @@
  * Author: Chinmay Shalawadi
  * Institution: University of Colorado Boulder
  * Mail id: chsh1552@colorado.edu
- * References: SDCC Documentation, STM8 datasheet & Reference Manuals
+ * References:STM8 datasheet & Reference Manuals
  ***************************************************************************/
 
 #include "regdef.h"

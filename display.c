@@ -4,7 +4,7 @@
  * Author: Chinmay Shalawadi
  * Institution: University of Colorado Boulder
  * Mail id: chsh1552@colorado.edu
- * References: SDCC Documentation, MAX7219 Datasheet
+ * References: , MAX7219 Datasheet
  ***************************************************************************/
 
 #include "display.h"
