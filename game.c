@@ -203,12 +203,13 @@ void game_compute() __critical
         }
         if (pixel_direction == DOWN)
         {
-
+            // check if the snake is at the edge
+            // make it go thruogh the wall 
             if (xpos < 8)
                 next_pos = ((xpos + 1) << 4) | ypos;
             else
                 next_pos = ((1) << 4) | ypos;
-
+            // check if the snake has eaten the fruit
             if (next_pos == pixels_buffer[63].pos_xy && i == 0)
             {
                 create_new_pixel(next_pos, 1, DOWN);
@@ -217,17 +218,20 @@ void game_compute() __critical
             }
             else
             {
+                //updat the pixel to it's next position
                 pixels_buffer[i].pos_xy = next_pos;
                 pixels_buffer[i].current_direction = pixel_direction;
             }
         }
         if (pixel_direction == LEFT)
         {
+            // check if the snake is at the edge
+            // make it go thruogh the wall
             if (ypos > 1)
                 next_pos = ((xpos) << 4) | (ypos - 1);
             else
                 next_pos = ((xpos) << 4) | (8);
-
+            // check if the snake has eaten the fruit
             if (next_pos == pixels_buffer[63].pos_xy && i == 0)
             {
                 create_new_pixel(next_pos, 1, LEFT);
@@ -236,13 +240,14 @@ void game_compute() __critical
             }
             else
             {
+                //updat the pixel to it's next position
                 pixels_buffer[i].pos_xy = next_pos;
                 pixels_buffer[i].current_direction = pixel_direction;
             }
         }
         if (pixel_direction == RIGHT)
         {
-
+            // This is the same as above but for RIGHT direction
             if (ypos < 8)
                 next_pos = ((xpos) << 4) | (ypos + 1);
             else
@@ -261,33 +266,39 @@ void game_compute() __critical
         }
         if (pixel_direction == IDLE)
         {
+            //If joystick is idle, then to keep snake moving, previous speed is made the next
             pixels_buffer[i].current_direction = pixel_direction;
         }
     }
+    //Once all the position of the pixels is calcualted, this function call checks if snake has crashed
+    //into itself
     check_body_crash(pixels_buffer[0].pos_xy);
-
+    
+    //Update the next direction for all the remaining pixels, since the direction changes needs to traverse down the snake body
     for (i = 1; i < total_pixels; i++)
     {
         pixels_buffer[i].next_direction = pixels_buffer[i - 1].current_direction;
     }
 }
 
-// ------------------------------------------------putchar-------------------------------------------------
+// ------------------------------------------------game-over------------------------------------------------
 /***********************************************************************************
- * function : Shows the eeprom menu and waits for user input
+ * function : Plays the game over vibration and beeper sequence and starts a new game
  * parameters : none
  * return : none
  ***********************************************************************************/
 
 void game_over()
 {
-    long i;
     clear_display();
+    
     enable_motor();
     enable_beeper();
     game_delay(150);
     disable_motor();
     disable_beeper();
+    
+    //Change the beeper frequency
     BEEP_CSR = 0x4C;
     enable_beeper();
     game_delay(150);
@@ -295,6 +306,8 @@ void game_over()
     game_delay(150);
     disable_motor();
     disable_beeper();
+    
+    //Change the bepper frequency 
     BEEP_CSR = 0x4E;
     enable_beeper();
     game_delay(150);
@@ -302,10 +315,19 @@ void game_over()
     game_delay(300);
     disable_motor();
     disable_beeper();
+    
+    //Reset the beepr to default state
     BEEP_CSR = 0x4A;
-
+    
+    //start a new game
     init_game();
 }
+// ------------------------------------------------error-vibration-----------------------------------------------
+/***********************************************************************************
+ * function : Vibrates the motor when user provides invalid input
+ * parameters : none
+ * return : none
+ ***********************************************************************************/
 
 void error_vibration()
 {
@@ -313,31 +335,39 @@ void error_vibration()
     game_delay(120);
     disable_motor();
 }
+// ------------------------------------------------generate-fruit-----------------------------------------------
+/***********************************************************************************
+ * function : Generates a fruit at a new random location
+ * parameters : none
+ * return : none
+ ***********************************************************************************/
 
 void generate_fruit()
 {
 
     volatile uint8_t random_posxy;
-    srand(now() + 77);
+    //seeding the random generator with system time to improve randomness
+    srand(now());
 repeat:
+    //Generating a random XY location between (1,1) &　（８，８）
     random_posxy = ((rand() % (8) + 1) << 4) | (rand() % (8) + 1);
-
+    
+    //Check if a pixel already exists at that location and repeat the random generation if it does
     for (int i = 0; i < total_pixels; i++)
     {
         if (random_posxy == pixels_buffer[i].pos_xy)
             goto repeat;
     }
 
-    pixels_buffer[63].pos_xy = random_posxy;
-    pixels_buffer[63].current_direction = IDLE;
-    pixels_buffer[63].next_direction = IDLE;
+    pixels_buffer[FRUIT_BUFFER_INDEX].pos_xy = random_posxy;
+    pixels_buffer[FRUIT_BUFFER_INDEX].current_direction = IDLE;
+    pixels_buffer[FRUIT_BUFFER_INDEX].next_direction = IDLE;
 
-    interrupt_flag = 0;
 }
-// ------------------------------------------------putchar-------------------------------------------------
+// ------------------------------------------------check-body-crash-------------------------------------------------
 /***********************************************************************************
- * function : Shows the eeprom menu and waits for user input
- * parameters : none
+ * function : Checks if the snake head has crashed with itself
+ * parameters :  next_pos -> next position of the snake head
  * return : none
  ***********************************************************************************/
 void check_body_crash(uint8_t next_pos)
@@ -350,13 +380,15 @@ void check_body_crash(uint8_t next_pos)
 }
 // ------------------------------------------------game_render-------------------------------------------------
 /***********************************************************************************
- * function : Shows the eeprom menu and waits for user input
+ * function : Converts pixel data into display compatible format and writes data to the display
  * parameters : none
  * return : none
  ***********************************************************************************/
 void game_render()
 {
+    // Raw display buffer data without any pixels
     uint16_t cols_data[8] = {0x0001, 0x0002, 0x0003, 0x0004, 0x0005, 0x0006, 0x0007, 0x0008};
+    
     uint8_t pos, speed_vector, temp, temp2;
     int i;
     for (i = 0; i < total_pixels; i++)
